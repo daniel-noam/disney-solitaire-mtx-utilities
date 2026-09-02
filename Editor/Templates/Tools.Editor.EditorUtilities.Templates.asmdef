@@ -1,0 +1,24 @@
+{
+    "name": "Tools.Editor.EditorUtilities.Templates",
+    "rootNamespace": "Tools.Editor.EditorUtilities",
+    "references": [
+        "GUID:17953ee8d9996454a86d1f1988c4093c",
+        "GUID:e664d475760ef0143a449f811d923a41",
+        "GUID:d22450511dc02944ea89a3b797bc657a",
+        "GUID:b694e0518fbc6e54dad888a5546d2c53",
+        "GUID:81a736d2e1f63f24794a4da45df5302c"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "DOMINO_TEMPLATES"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
