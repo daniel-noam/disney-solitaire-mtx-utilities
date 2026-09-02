@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Object = UnityEngine.Object;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Browsing, searching and previewing the contents of an AssetBundle.

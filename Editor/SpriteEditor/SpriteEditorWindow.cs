@@ -3,7 +3,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// One texture, one preview, several tools that operate on it:

@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Injects IMGUI containers into Unity's built-in toolbar by reflecting into UnityEditor.Toolbar,

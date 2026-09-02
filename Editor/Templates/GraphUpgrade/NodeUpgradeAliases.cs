@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using SuperPlay.Domino.TemplatesBehavior.Runtime.Nodes;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// The renames one version of a node made to the last, where matching by name cannot see it.

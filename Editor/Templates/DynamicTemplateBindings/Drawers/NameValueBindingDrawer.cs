@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Shared drawer for the binding types that are just a name plus a single value

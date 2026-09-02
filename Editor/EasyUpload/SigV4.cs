@@ -5,7 +5,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Tools.Editor.EditorUtilities.EasyUpload
+namespace Utilities.Editor.EasyUpload
 {
     /// <summary>
     /// AWS Signature Version 4, spoken directly rather than through the AWS SDK for .NET.

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Finds the stretchable band of a texture - the run of identical rows/columns a 9-slice border

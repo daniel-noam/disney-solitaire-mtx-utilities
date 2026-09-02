@@ -3,7 +3,7 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// How two neighbouring pixel lines are judged to be "the same" while looking for the
@@ -176,7 +176,7 @@ namespace Tools.Editor.EditorUtilities
                  "always costs some quality.")]
         public int jpgQuality = 95;
 
-        private const string PrefsKey = "Tools.Editor.EditorUtilities.NineSlice.Options";
+        private const string PrefsKey = "Utilities.Editor.NineSlice.Options";
         public const string DefaultSuffix = "-9slice";
 
         public void Validate()

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities.EasyUpload
+namespace Utilities.Editor.EasyUpload
 {
     /// <summary>
     /// Picking upload targets, in its own window rather than inline.

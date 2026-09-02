@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     internal class RenameBindingWindow : EditorWindow
     {

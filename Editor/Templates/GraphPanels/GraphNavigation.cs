@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using BlueGraph.Editor;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Puts the view on a node, from anywhere.

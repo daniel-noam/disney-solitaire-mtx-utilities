@@ -1,50 +1,23 @@
-// The shared look of the LinkedAssets editor tools.
+// The shared look of these editor tools.
 //
-// Extracted from EasyUpload once its design had settled, so what is here is a set of decisions that
-// were argued with in a real window rather than guessed at in the abstract. The rules below are the
-// part worth keeping; the styles are just how they are enforced.
+// The rules behind it are in DESIGN.md at the root of this repo, where a toolmaker can find them
+// without opening a source file: two button levels, inert styles for anything that is not a button,
+// visibly disabled, every size from the scale below, and non-wrapping labels elided into a rect.
 //
-//   1. Two button levels, never three. Primary is the one action a panel exists for; Secondary is
-//      every other button. A third, quieter level was tried and removed: it read as not-clickable
-//      beside the buttons it sat next to, and being low-contrast already, it had nothing left to
-//      give up when it needed to look disabled. Hierarchy belongs in *which* action is primary, not
-//      in making some buttons whisper.
+// Kept there rather than here so it is one document rather than a header nobody outside this file
+// reads. What stays here is the enforcement.
 //
-//   2. A style that is not for a button gets its interactive states stripped — see Inert. GUI.Label
-//      asks its style to draw hovered whenever the pointer is inside its rect, so a label built from
-//      EditorStyles.label lights up under the cursor and lies about being clickable.
-//
-//   3. Disabled has to be visible — see DisabledScope. IMGUI's own disabled tint is calibrated for
-//      the built-in skin and barely shows through a custom background texture.
-//
-//   4. Spacing, control heights and button widths come from the scale below. Nothing should invent
-//      a number; if a new size is genuinely needed, it belongs here with a name.
-//
-//   5. A label that cannot wrap must be given a rect and elided into it. A non-wrapping label
-//      reports its content width as its *minimum* width, so a long path or ARN does not get clipped
-//      — it pushes the window wider than the screen.
-//
-// Three habits go with these, which no style can enforce on a tool's behalf:
-//
-//   0. Call Ensure() first, in every entry point that reads one of these — a window's OnGUI, an
-//      inspector's OnInspectorGUI, a drawer's OnGUI. The styles are built on demand and released
-//      on every assembly reload, so anything that has not called it can be handed a null style,
-//      and IMGUI answers a null style with a NullReferenceException from inside its own layout.
-//
-//   * Set wantsMouseMove and repaint on MouseMove, or hover states only appear when something else
-//     happens to trigger a frame, and every button feels a tenth of a second behind the pointer.
-//
-//   * Freeze anything that decides whether a control exists once per event pass. IMGUI runs Layout
-//     and Repaint over the same code and requires both to emit the same controls; a value a worker
-//     thread can change between them throws "Getting control N's position in a group with only M
-//     controls" and takes the window down.
+// The one thing worth repeating at the point of use: call Ensure() before reading any of these. The
+// styles are built on demand and released on every assembly reload, so a caller that skips it can
+// be handed a null style, and IMGUI answers that with a NullReferenceException from inside its own
+// layout.
 
 using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// The look of the EasyUpload windows: palette, rounded-rect textures, and the styles built on

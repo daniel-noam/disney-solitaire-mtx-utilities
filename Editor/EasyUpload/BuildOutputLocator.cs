@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor;
 
-namespace Tools.Editor.EditorUtilities.EasyUpload
+namespace Utilities.Editor.EasyUpload
 {
     /// <summary>
     /// Finds where "Domino/Build/Build MTX Asset Bundles" put its output, without EasyUpload

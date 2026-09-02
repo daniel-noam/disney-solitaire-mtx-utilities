@@ -7,7 +7,7 @@ using BlueGraph.Editor;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>One deprecated node in a graph, and what replacing it would cost.</summary>
     public sealed class NodeUpgrade

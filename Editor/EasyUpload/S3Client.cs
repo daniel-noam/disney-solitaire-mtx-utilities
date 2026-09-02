@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Xml.Linq;
 
-namespace Tools.Editor.EditorUtilities.EasyUpload
+namespace Utilities.Editor.EasyUpload
 {
     /// <summary>One object already in a bucket, as far as the comparison cares.</summary>
     public class RemoteObject

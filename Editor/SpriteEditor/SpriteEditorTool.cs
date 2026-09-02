@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>Which tool the window is showing. The value is the tab order.</summary>
     public enum SpriteEditorToolId

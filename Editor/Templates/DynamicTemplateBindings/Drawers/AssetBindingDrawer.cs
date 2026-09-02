@@ -1,7 +1,7 @@
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEditor;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     [CustomPropertyDrawer(typeof(AssetBinding))]
     public class AssetBindingDrawer : NameValueBindingDrawer

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities.EasyUpload
+namespace Utilities.Editor.EasyUpload
 {
     /// <summary>
     /// Everything the window remembers except the credentials, which live in the file the desktop

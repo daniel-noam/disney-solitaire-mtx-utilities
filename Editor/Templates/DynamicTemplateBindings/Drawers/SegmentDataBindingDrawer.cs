@@ -2,7 +2,7 @@ using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     [CustomPropertyDrawer(typeof(SegmentDataBinding))]
     public class SegmentDataBindingDrawer : PropertyDrawer

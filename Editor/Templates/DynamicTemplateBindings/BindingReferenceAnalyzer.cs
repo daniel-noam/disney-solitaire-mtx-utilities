@@ -6,7 +6,7 @@ using BlueGraph;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using SuperPlay.Domino.TemplatesBehavior.Runtime.Nodes;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     public readonly struct BindingIssueKey : IEquatable<BindingIssueKey>
     {

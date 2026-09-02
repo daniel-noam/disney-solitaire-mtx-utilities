@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using BlueGraph.Editor;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Puts this assembly's panels into every open graph editor, without the graph editor knowing.

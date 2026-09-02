@@ -2,7 +2,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Which parts of the bindings inspector are switched on. Persisted per user via EditorPrefs -
@@ -15,7 +15,7 @@ namespace Tools.Editor.EditorUtilities
     [Serializable]
     public class DynamicTemplateBindingsSettings
     {
-        private const string PrefsKey = "Tools.Editor.EditorUtilities.DynamicTemplateBindings.Settings";
+        private const string PrefsKey = "Utilities.Editor.DynamicTemplateBindings.Settings";
 
         [Tooltip("The box at the top listing every key that is missing, unused or duplicated.")]
         public bool showSummary = true;

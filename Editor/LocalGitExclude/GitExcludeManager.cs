@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>Editor window for managing the local Git exclude file (.git/info/exclude).</summary>
     public class GitExcludeManager : EditorWindow

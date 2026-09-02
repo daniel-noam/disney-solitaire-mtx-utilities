@@ -7,7 +7,7 @@ using SuperPlay.Domino.TemplatesBehavior.Runtime.Nodes;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Adds the graph's size to its inspector, under the min version: how many nodes it holds, how

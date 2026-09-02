@@ -3,7 +3,7 @@ using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Adds a run of binding keys in one go: Reward_Panel_0 and a count of 60 rather than sixty

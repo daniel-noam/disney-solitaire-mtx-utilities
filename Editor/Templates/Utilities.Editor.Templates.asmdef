@@ -1,6 +1,6 @@
 {
-    "name": "Tools.Editor.EditorUtilities.Templates",
-    "rootNamespace": "Tools.Editor.EditorUtilities",
+    "name": "Utilities.Editor.Templates",
+    "rootNamespace": "Utilities.Editor",
     "references": [
         "GUID:17953ee8d9996454a86d1f1988c4093c",
         "GUID:e664d475760ef0143a449f811d923a41",

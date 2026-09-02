@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEditor;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Reads the binding lists off a <see cref="DynamicTemplateBindings"/> component through one

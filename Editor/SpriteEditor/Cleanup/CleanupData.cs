@@ -2,7 +2,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>How the canvas is rounded up, for hardware that would rather have a power of two.</summary>
     public enum CleanupPadding
@@ -67,7 +67,7 @@ namespace Tools.Editor.EditorUtilities
 
         public bool createBackup = true;
 
-        private const string PrefsKey = "Tools.Editor.EditorUtilities.SpriteEditor.CleanupOptions";
+        private const string PrefsKey = "Utilities.Editor.SpriteEditor.CleanupOptions";
         public const string DefaultSuffix = "-clean";
 
         /// <summary>Nothing to do, so the buttons and the preview can say so.</summary>

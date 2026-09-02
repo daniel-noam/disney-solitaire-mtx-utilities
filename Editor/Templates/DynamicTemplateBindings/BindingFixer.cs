@@ -3,7 +3,7 @@ using System.Reflection;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEditor;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Applies a <see cref="BindingFix"/> to the bindings component.

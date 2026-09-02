@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     public enum BindingListKind
     {

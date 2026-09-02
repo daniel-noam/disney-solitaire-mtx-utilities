@@ -4,7 +4,7 @@ using BlueGraph;
 using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using SuperPlay.Domino.TemplatesBehavior.Runtime.Nodes;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>One thing in a graph that carries a version, and where it was found.</summary>
     public sealed class VersionContributor

@@ -3,7 +3,7 @@ using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     [CustomEditor(typeof(DynamicTemplateBindings))]
     public class DynamicTemplateBindingsEditor : UnityEditor.Editor

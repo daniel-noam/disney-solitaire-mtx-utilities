@@ -2,7 +2,7 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>Which part of the source decides where the mask is solid.</summary>
     public enum MaskShape
@@ -66,7 +66,7 @@ namespace Tools.Editor.EditorUtilities
                  "the mask, so it lines up with the sprite it was made from.")]
         public bool copyImportSettings = true;
 
-        private const string PrefsKey = "Tools.Editor.EditorUtilities.SpriteEditor.MaskOptions";
+        private const string PrefsKey = "Utilities.Editor.SpriteEditor.MaskOptions";
         public const string DefaultSuffix = "-mask";
 
         public void Validate()

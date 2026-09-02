@@ -5,7 +5,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>Editor window for extracting TMP materials from selection and assigning them to scene objects.</summary>
     public class TMPMaterialExtractorWindow : EditorWindow

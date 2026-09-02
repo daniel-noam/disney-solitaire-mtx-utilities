@@ -5,7 +5,7 @@ using SuperPlay.Domino.TemplatesBehavior.Runtime;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Takes you from a binding key to the nodes that use it.

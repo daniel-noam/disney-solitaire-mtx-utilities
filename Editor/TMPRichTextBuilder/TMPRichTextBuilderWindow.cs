@@ -7,7 +7,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 
-namespace Tools.Editor.EditorUtilities
+namespace Utilities.Editor
 {
     /// <summary>
     /// Editor window for composing TextMeshPro rich text with tag helpers,
