@@ -118,26 +118,70 @@ Select anything, under **Git**:
 ### On the inspector
 
 - A **`DynamicTemplateBindings`** component gets a box per issue, with buttons to add a key the
-  graph uses but nothing declares, or remove one nothing uses; a right-click entry on any key
-  finds the nodes using it; and reference counts and issue icons on the rows themselves.
+  graph uses but nothing declares, or remove one nothing uses; reference counts and issue icons on
+  the rows themselves; and a right-click menu on any key offering *Show the nodes using this key*
+  and *Rename key and graph references* (both described under the graph editor below).
   All of it is off until switched on in the settings window.
 - A **`TemplateBehavior`** asset gets its node count, its node count including subgraphs, and how
   many of those nodes nothing calls — under the minimum version the inspector already showed.
 
 ### Inside the behaviour graph editor
 
-On the toolbar, on the right:
+Two toggles are added to the right-hand end of the graph editor's toolbar. Both panels start
+hidden — the canvas is what you opened the window for — and each rebuilds when you switch it on
+and from its own **Refresh** button, rather than every frame, because both walk every node of
+every subgraph.
 
-- **Min Version** — which nodes decide the template's minimum client version, and what it would
-  drop to without them.
-- **Deprecated** — every deprecated node, and a button to swap each for its replacement, carrying
-  the connections and field values across. What it cannot carry, it says so before you press, and
-  lists afterwards.
+**Min Version** answers why a template asks for the client version it does. The version is shown
+large, then the line the bare number cannot give you — *"Without the 3 at 1.23.0, it would be
+1.13.0"* — because clearing the top tier buys nothing unless you clear all of it. Below that,
+every node carrying a version, worst first. Clicking a row frames that node; if it lives inside a
+subgraph the row says so and clicking opens *that* subgraph's window, not this one.
+
+**Deprecated** lists every deprecated node in the graph and swaps each for its replacement:
+
+- **Upgrade** builds the new node, copies the field values both versions share, rebuilds every
+  connection on ports they share by name, and keeps the node's position, its tab, and its place
+  in any group it belonged to. The view stays exactly where it was, with the new node selected.
+- **Find** jumps to a node without changing it.
+- Rows are colour-coded: white swaps cleanly, amber swaps but loses something, grey has no
+  replacement to swap to. The tooltip names the exact ports and values at stake.
+- A `~` marks a replacement worked out from the naming rather than declared by the node itself.
+  Most deprecated nodes here never named a successor, so this is the common case — it is worth a
+  glance before pressing.
+- **Upgrade the clean ones** does the whole graph, but only the rows that lose nothing. Anything
+  that would drop a connection stays behind for its own button.
+- Anything that could not be reconnected is listed afterwards in the panel, with a **Find** to
+  reach the node that was left unconnected, and repeated in the console. It is the one thing the
+  graph itself cannot show you: once the old node is gone, its loose ends are invisible.
+
+**Renaming a key rewrites the graph.** Right-click a key on the bindings component and choose
+*Rename key and graph references*: it renames the binding and every node in the graph — and in its
+subgraphs — that referenced the old name, in one pass. Renaming the binding alone is what produces
+the *"used in the graph but missing from bindings"* errors, so the two halves are deliberately not
+separable.
+
+Two things it tells you before you commit to it:
+
+- If the key shares a naming prefix with others, changing that prefix renames the whole family
+  with it. The window says how many keys that is, because renaming half a family is worse than
+  renaming none of it.
+- Other graphs that use the same key — a badge graph paired with a popup, typically — are **not**
+  updated. Nothing can see those from here, so they are yours to check.
+
+The bindings inspector reaches in here too. *Show the nodes using this key* opens the graph and
+types the key into the canvas's own search in **Values** mode, so the search box's next and
+previous buttons walk the matches — better than selecting them all at once, which could only ever
+show the ones that happened to share a tab.
 
 ### Quietly, without being asked
 
 - The tools keep themselves out of the host project's git — see *It hides itself* above.
-- Each tool registers its own settings file so those stay out of git too.
+- Each tool registers its own settings file so those stay out of git too, and the Git Local
+  Exclude Manager offers to add any it finds unregistered rather than waiting to be asked.
+- EasyUpload reads the bucket list from the credentials you give it, so picking a destination is
+  a list to choose from rather than a name to remember, and its *From build* button takes the
+  folder straight from the MTX bundle build's output path.
 - The Folder Structure Generator hands folders to the QuickNavigation tool if the project has one,
   through reflection, so it costs nothing in projects that do not.
 
