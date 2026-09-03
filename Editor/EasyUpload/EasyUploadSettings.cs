@@ -82,6 +82,36 @@ namespace Utilities.Editor.EasyUpload
         /// <summary>The last folder that was dropped, so reopening the window does not start blank.</summary>
         public string lastBuildPath = "";
 
+        /// <summary>
+        /// Asset folders whose templates get a description JSON.
+        ///
+        /// A folder list rather than a component check, because the component cannot tell them
+        /// apart: a badge carries the same DynamicTemplate a popup does, and only the folder it
+        /// lives in says that a badge is configured without one. Editable because that split is a
+        /// team convention, not something the project states anywhere — a new kind of template
+        /// should be a line here, not a code change.
+        ///
+        /// Matched as path prefixes, so a folder covers everything nested under it.
+        /// </summary>
+        public List<string> jsonFolders = new List<string>(DefaultJsonFolders);
+
+        public static readonly string[] DefaultJsonFolders =
+        {
+            "Assets/Export/Templates",
+            "Assets/Export/DynamicTemplateTooltips",
+            "Assets/Export/AreYouSureTemplates",
+        };
+
+        /// <summary>
+        /// Where the config JSONs are written — the campaign's folder on the desktop, beside its
+        /// build folders.
+        ///
+        /// Remembered because it is chosen once per campaign and then written into every build,
+        /// which is also why it is the one thing here worth a second look when campaigns change:
+        /// nothing in a build says which campaign folder it belongs to.
+        /// </summary>
+        public string lastJsonPath = "";
+
         public static readonly string[] Versions =
         {
             "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10",
@@ -139,6 +169,14 @@ namespace Utilities.Editor.EasyUpload
                     droppedFiles = new List<string>(DefaultDroppedFiles);
                 schema = 2;
             }
+            if (schema < 3)
+            {
+                // Same reasoning as droppedFiles: a file written before the list existed says
+                // nothing about it, which is not the same as saying "no folder qualifies".
+                if (jsonFolders == null || jsonFolders.Count == 0)
+                    jsonFolders = new List<string>(DefaultJsonFolders);
+                schema = 3;
+            }
             return this;
         }
 
@@ -172,6 +210,13 @@ namespace Utilities.Editor.EasyUpload
             // Not defaulted when empty: an empty list is a legitimate choice meaning "upload
             // everything", and only Migrate may put the defaults back.
             droppedFiles = Deduped(droppedFiles);
+
+            // Trailing slashes and backslashes would both defeat the prefix match, and a
+            // hand-edited file is exactly where they turn up.
+            jsonFolders = Deduped(jsonFolders);
+            for (var i = 0; i < jsonFolders.Count; i++)
+                jsonFolders[i] = jsonFolders[i].Replace('\\', '/').TrimEnd('/');
+
             return this;
         }
 

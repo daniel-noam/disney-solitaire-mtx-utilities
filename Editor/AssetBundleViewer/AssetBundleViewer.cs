@@ -232,13 +232,8 @@ namespace Utilities.Editor
         {
             var rect = GUILayoutUtility.GetRect(0, ToolStyles.DropZoneHeight, GUILayout.ExpandWidth(true));
 
-            var fill = isDragHovering
-                ? ToolStyles.Blend(ToolStyles.InsetBg, ToolStyles.Accent, 0.25f)
-                : ToolStyles.InsetBg;
-
-            EditorGUI.DrawRect(rect, fill);
-            ToolStyles.DashedBorder(rect, isDragHovering ? ToolStyles.Accent : ToolStyles.Faint,
-                5f, 4f, isDragHovering ? 2f : 1f);
+            var showing = loaded || !string.IsNullOrEmpty(bundlePath);
+            ToolStyles.DropZone(rect, isDragHovering, showing ? bundlePath : "");
 
             const float lineOne = 18f;
             const float lineTwo = 16f;
@@ -246,12 +241,13 @@ namespace Utilities.Editor
             var wide = new Rect(rect.x + 10, top, rect.width - 20, lineOne);
             var under = new Rect(rect.x + 10, top + lineOne, rect.width - 20, lineTwo);
 
-            if (loaded || !string.IsNullOrEmpty(bundlePath))
+            if (showing)
             {
-                GUI.Label(wide, new GUIContent(Path.GetFileName(bundlePath), bundlePath),
+                var tip = bundlePath + ToolStyles.OpenTip(bundlePath);
+                GUI.Label(wide, new GUIContent(Path.GetFileName(bundlePath), tip),
                     ToolStyles.Centred(ToolStyles.CardTitle));
                 GUI.Label(under, new GUIContent(
-                        ToolStyles.Elide(bundlePath, ToolStyles.MonoCharsFor(under.width)), bundlePath),
+                        ToolStyles.Elide(bundlePath, ToolStyles.MonoCharsFor(under.width)), tip),
                     ToolStyles.Centred(ToolStyles.MonoSmall));
             }
             else

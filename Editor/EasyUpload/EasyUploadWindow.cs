@@ -12,7 +12,9 @@ namespace Utilities.Editor.EasyUpload
     /// Deploy a build folder to one or more S3 buckets without leaving Unity.
     ///
     /// Three steps, in the order the work actually happens: the buckets are standing configuration
-    /// for a campaign, the folder changes every build, and the review comes last. Reviewing and
+    /// for a campaign, the folder changes every build, and the review comes last. A fourth panel
+    /// follows the deploy rather than feeding it — the config JSONs that a popup or a DTT is handed
+    /// over with go to the campaign folder the build was staged in, not to a bucket. Reviewing and
     /// uploading open their own window (<see cref="PlanReviewWindow"/>) so a thousand-file list
     /// never has to fit under the cards.
     ///
@@ -51,7 +53,32 @@ namespace Utilities.Editor.EasyUpload
         private int folderFiles = -1;
         private long folderBytes;
         private bool scanningFolder;
-        private bool dragOver;
+
+        /// <summary>
+        /// Which drop zone the drag is currently over, not merely whether it is over one. With two
+        /// zones and a single flag, the zone the pointer is not over clears the flag the zone it is
+        /// over just set, and the highlight depends on which happened to draw last.
+        /// </summary>
+        private DropZone dragOverZone;
+
+        private enum DropZone { None, Build, Json }
+
+        // ---- config JSONs ----
+        private string jsonPath = "";
+        /// <summary>Null until the build has been scanned; empty means it was, and nothing needs one.</summary>
+        private DescriptionScan descriptions;
+
+        /// <summary>
+        /// The folder the walk in flight is reading, or null when none is. Guards the walk, not the
+        /// drawing — nothing about the card's layout depends on it, so it is not frozen.
+        ///
+        /// Focus asks for a rescan and focus is easy to give twice, so a second walk of the same
+        /// folder is dropped; a walk of a different one is not, because that is the folder having
+        /// changed under it and the newer answer is the one that counts.
+        /// </summary>
+        private string descriptionScanRoot;
+        private string descriptionScanError = "";
+        private string descriptionStatus = "";
 
         // ---- review ----
         private bool planning;
@@ -93,6 +120,10 @@ namespace Utilities.Editor.EasyUpload
         private bool framePlanning;
         private bool frameCanReview;
         private bool frameHasFolder;
+        private DescriptionScan frameDescriptions;
+        private bool frameHasJsonFolder;
+        private string frameDescriptionStatus = "";
+        private string frameDescriptionErrors = "";
 
         // Throttled because FreezeFrame runs on every mouse-move frame now, and these hit the
         // filesystem and EditorPrefs. Half a second is far below noticing and far above per-frame.
@@ -101,6 +132,8 @@ namespace Utilities.Editor.EasyUpload
         private bool folderExists;
         private double lastRootProbe = double.NegativeInfinity;
         private string buildRootCache = "";
+        private double lastJsonProbe = double.NegativeInfinity;
+        private bool jsonFolderExists;
         private AwsCredentials frameCredentials;
         private string frameConnectionMessage = "";
         private bool frameConnectionOk;
@@ -151,8 +184,25 @@ namespace Utilities.Editor.EasyUpload
             connectionMessage = "";
             EditorApplication.update += OnEditorUpdate;
 
+            jsonPath = settings.lastJsonPath ?? "";
+
             if (credentials != null) VerifyConnection();
-            if (!string.IsNullOrEmpty(buildPath)) ScanFolder();
+            if (!string.IsNullOrEmpty(buildPath))
+            {
+                ScanFolder();
+                ScanDescriptions();
+            }
+        }
+
+        /// <summary>
+        /// A rebuild happens outside this window, and the build folder's path does not change when
+        /// it does — so coming back to the window is the one moment that reliably means "the folder
+        /// may hold something else now". Cheap: the walk is on a background thread, and the card
+        /// keeps showing the previous answer until the new one lands.
+        /// </summary>
+        private void OnFocus()
+        {
+            if (!string.IsNullOrEmpty(buildPath)) ScanDescriptions();
         }
 
         private void OnDisable()
@@ -162,6 +212,7 @@ namespace Utilities.Editor.EasyUpload
             uploader?.Cancel();
             Unlock();
             settings.lastBuildPath = buildPath;
+            settings.lastJsonPath = jsonPath;
             settings.Save();
         }
 
@@ -204,33 +255,26 @@ namespace Utilities.Editor.EasyUpload
 
             DrawToolbar();
 
-            // The deploy tab is deliberately not inside a scroll view: the review list has to be
-            // able to claim the leftover height, and a control cannot expand inside a scroll view
-            // that is itself willing to grow forever. Settings is a form, so it still scrolls.
-            if (tab == Tab.Deploy)
+            // Both tabs scroll. The deploy tab used not to, so that the review list could claim
+            // whatever height was left over — but a control cannot expand inside a scroll view that
+            // is itself willing to grow forever, and with four cards the tab became taller than the
+            // window with no way to reach the bottom. The list is bounded by hand instead (see
+            // ReviewListHeight), which keeps it big when there is room and lets the page scroll
+            // when there is not.
+            pageScroll = EditorGUILayout.BeginScrollView(pageScroll);
+            GUILayout.Space(ToolStyles.SpaceL);
+            using (new EditorGUILayout.HorizontalScope())
             {
                 GUILayout.Space(ToolStyles.SpaceL);
-                using (new EditorGUILayout.HorizontalScope())
+                using (new EditorGUILayout.VerticalScope())
                 {
-                    GUILayout.Space(ToolStyles.SpaceL);
-                    using (new EditorGUILayout.VerticalScope()) DrawDeploy();
-                    GUILayout.Space(ToolStyles.SpaceL);
+                    if (tab == Tab.Deploy) DrawDeploy();
+                    else DrawSettings();
                 }
                 GUILayout.Space(ToolStyles.SpaceL);
             }
-            else
-            {
-                pageScroll = EditorGUILayout.BeginScrollView(pageScroll);
-                GUILayout.Space(ToolStyles.SpaceL);
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    GUILayout.Space(ToolStyles.SpaceL);
-                    using (new EditorGUILayout.VerticalScope()) DrawSettings();
-                    GUILayout.Space(ToolStyles.SpaceL);
-                }
-                GUILayout.Space(ToolStyles.SpaceL);
-                EditorGUILayout.EndScrollView();
-            }
+            GUILayout.Space(ToolStyles.SpaceL);
+            EditorGUILayout.EndScrollView();
         }
 
         /// <summary>
@@ -247,6 +291,10 @@ namespace Utilities.Editor.EasyUpload
             framePlanning = planning;
             frameCanReview = CanReview();
             frameHasFolder = BuildFolderExists();
+            frameDescriptions = descriptions;
+            frameHasJsonFolder = JsonFolderExists();
+            frameDescriptionStatus = descriptionStatus;
+            frameDescriptionErrors = DescriptionErrors();
             frameCredentials = credentials;
             frameConnectionMessage = connectionMessage;
             frameConnectionOk = connectionOk;
@@ -325,9 +373,8 @@ namespace Utilities.Editor.EasyUpload
             DrawFolderCard();
             GUILayout.Space(ToolStyles.SpaceL);
             DrawUploadCard();
-
-            // Nothing to review yet, so the cards sit at the top rather than stretching.
-            if (plan == null) GUILayout.FlexibleSpace();
+            GUILayout.Space(ToolStyles.SpaceL);
+            DrawConfigJsonCard();
         }
 
         /// <summary>
@@ -471,7 +518,7 @@ namespace Utilities.Editor.EasyUpload
                     ToolStyles.ButtonM, ToolStyles.ControlHeight));
 
                 GUILayout.Space(ToolStyles.SpaceM);
-                DrawDropZone(hasFolder);
+                DrawDropZone(DropZone.Build, buildPath, "Drag a build folder here", SetBuildFolder);
 
                 if (hasFolder)
                 {
@@ -481,11 +528,9 @@ namespace Utilities.Editor.EasyUpload
                         GUILayout.Label(FolderSummary(), ToolStyles.Hint);
                         GUILayout.FlexibleSpace();
 
-                        if (GUILayout.Button("Reveal", ToolStyles.Secondary,
-                                GUILayout.Width(ToolStyles.ButtonS),
-                                GUILayout.Height(ToolStyles.ControlHeight)))
-                            EditorUtility.RevealInFinder(buildPath);
-
+                        // No Reveal: the drop zone above names the folder and opens it on a
+                        // double-click. Clear stays, because dropping the folder is not something
+                        // the zone itself can do.
                         if (GUILayout.Button("Clear", ToolStyles.Secondary,
                                 GUILayout.Width(ToolStyles.ButtonS),
                                 GUILayout.Height(ToolStyles.ControlHeight)))
@@ -521,31 +566,35 @@ namespace Utilities.Editor.EasyUpload
             }
         }
 
-        private void DrawDropZone(bool hasFolder)
+        /// <summary>
+        /// The drag target both folder cards use: the same box, told which folder it is showing and
+        /// what to do with one dropped on it. Two of them exist, so nothing here may read the
+        /// window's folder fields directly.
+        /// </summary>
+        private void DrawDropZone(DropZone zone, string path, string prompt, Action<string> onDrop)
         {
             var rect = GUILayoutUtility.GetRect(0, ToolStyles.DropZoneHeight, GUILayout.ExpandWidth(true));
+            var over = dragOverZone == zone;
+            var hasFolder = !string.IsNullOrEmpty(path) && Directory.Exists(path);
 
-            var fill = dragOver
-                ? ToolStyles.Blend(ToolStyles.InsetBg, ToolStyles.Accent, 0.25f)
-                : ToolStyles.InsetBg;
-            var edge = dragOver ? ToolStyles.Accent : ToolStyles.Faint;
+            ToolStyles.DropZone(rect, over, hasFolder ? path : "");
 
-            EditorGUI.DrawRect(rect, fill);
-            ToolStyles.DashedBorder(rect, edge, 5f, 4f, dragOver ? 2f : 1f);
-
-            if (dragOver)
+            if (over)
             {
                 GUI.Label(rect, "Release to use this folder", ToolStyles.Centred(ToolStyles.CardTitle));
             }
             else if (hasFolder)
             {
+                var tip = path + ToolStyles.OpenTip(path);
+
                 var top = new Rect(rect.x + 10, rect.y + 8, rect.width - 20, 18);
-                GUI.Label(top, new GUIContent(Path.GetFileName(buildPath.TrimEnd('/', '\\')), buildPath),
+                GUI.Label(top, new GUIContent(Path.GetFileName(path.TrimEnd('/', '\\')), tip),
                     ToolStyles.Centred(ToolStyles.CardTitle));
 
                 var bottom = new Rect(rect.x + 10, rect.y + 26, rect.width - 20, 16);
-                GUI.Label(bottom, new GUIContent(Shorten(buildPath, 60), buildPath),
+                GUI.Label(bottom, new GUIContent(Shorten(path, 60), tip),
                     ToolStyles.Centred(ToolStyles.MonoSmall));
+
             }
             else
             {
@@ -556,13 +605,13 @@ namespace Utilities.Editor.EasyUpload
                 var top = rect.y + (rect.height - (lineOne + lineTwo)) / 2f;
 
                 GUI.Label(new Rect(rect.x + 10, top, rect.width - 20, lineOne),
-                    "Drag a build folder here", ToolStyles.Centred(ToolStyles.CardTitle));
+                    prompt, ToolStyles.Centred(ToolStyles.CardTitle));
 
                 GUI.Label(new Rect(rect.x + 10, top + lineOne, rect.width - 20, lineTwo),
                     "from Finder or the Project window", ToolStyles.Centred(ToolStyles.Hint));
             }
 
-            HandleDrop(rect);
+            HandleDrop(rect, zone, onDrop);
         }
 
         /// <summary>
@@ -573,8 +622,7 @@ namespace Utilities.Editor.EasyUpload
         private void DrawUploadCard()
         {
             var reviewing = framePlan != null;
-            using (new EditorGUILayout.VerticalScope(ToolStyles.Card,
-                       reviewing ? GUILayout.ExpandHeight(true) : GUILayout.ExpandHeight(false)))
+            using (new EditorGUILayout.VerticalScope(ToolStyles.Card))
             {
                 ToolStyles.CardHeader(3, "Review & upload", reviewing && framePlan.TotalSelected == 0);
                 GUILayout.Space(ToolStyles.SpaceM);
@@ -592,13 +640,308 @@ namespace Utilities.Editor.EasyUpload
                 DrawResultsBar();
                 GUILayout.Space(ToolStyles.SpaceS);
 
-                var listRect = GUILayoutUtility.GetRect(0, 80,
-                    GUILayout.ExpandHeight(true), GUILayout.ExpandWidth(true));
+                var listRect = GUILayoutUtility.GetRect(0, ReviewListHeight(frameRows.Count),
+                    GUILayout.ExpandWidth(true));
                 DrawList(listRect, frameRows);
 
                 GUILayout.Space(ToolStyles.SpaceM);
                 DrawUploadFooter();
             }
+        }
+
+        /// <summary>
+        /// Step 4: the JSON that goes beside the bundles.
+        ///
+        /// Popups and DTTs need a description JSON handed over with the build; badges, stamps,
+        /// dynamic resources, art and audio do not. So this does not ask which templates are in the
+        /// build: it walks the build folder and its sub-folders, matches the file names against the
+        /// bundles this project builds, and keeps the ones holding a template that lives under one
+        /// of the configured folders (Settings → Config JSON folders — a badge carries the same
+        /// component a popup does, so the folder is the only thing that separates them).
+        ///
+        /// An MTX build writes every bundle once per device, so the walk counts by name: four
+        /// copies of one bundle are one template, one row and one file. On most builds the answer
+        /// is nothing at all, and the card says so quietly rather than warning about it, because a
+        /// message that appears on almost every build is one people learn to look past.
+        ///
+        /// Last because it is a hand-off rather than a deploy: the JSONs go to the campaign folder
+        /// the build was staged in, not to a bucket.
+        /// </summary>
+        private void DrawConfigJsonCard()
+        {
+            using (new EditorGUILayout.VerticalScope(ToolStyles.Card))
+            {
+                var scan = frameDescriptions;
+
+                // Done means the folder holds every JSON this build needs — which is vacuously true
+                // for the majority of builds that need none, and that is the right answer for them.
+                var done = frameHasJsonFolder && scan != null && AllPresent(scan.Templates);
+
+                var header = ToolStyles.CardHeader(4, "Config JSONs", done);
+
+                if (!TemplateDescriptions.ToolPresent)
+                {
+                    GUILayout.Space(ToolStyles.SpaceM);
+                    EditorGUILayout.HelpBox(TemplateDescriptions.Explain(), MessageType.None);
+                    return;
+                }
+
+                var chooseRect = new Rect(header.xMax - ToolStyles.ButtonL, header.y + 1,
+                    ToolStyles.ButtonL, ToolStyles.ControlHeight);
+                if (GUI.Button(chooseRect,
+                        string.IsNullOrEmpty(jsonPath) ? "Choose folder…" : "Change folder…",
+                        ToolStyles.Secondary))
+                {
+                    var start = frameHasJsonFolder ? jsonPath : DesktopFolder();
+                    var chosen = EditorUtility.OpenFolderPanel("Choose where the config JSONs go", start, "");
+                    if (!string.IsNullOrEmpty(chosen)) SetJsonFolder(chosen);
+                }
+
+                GUILayout.Space(ToolStyles.SpaceM);
+                DrawDropZone(DropZone.Json, jsonPath, "Drag the campaign folder here", SetJsonFolder);
+
+                if (!string.IsNullOrEmpty(jsonPath) && !frameHasJsonFolder)
+                {
+                    GUILayout.Space(ToolStyles.SpaceS);
+                    EditorGUILayout.HelpBox("That folder is not there any more:\n" + jsonPath, MessageType.Warning);
+                }
+
+                GUILayout.Space(ToolStyles.SpaceS);
+                DrawConfigJsonBody(scan);
+            }
+        }
+
+        private void DrawConfigJsonBody(DescriptionScan scan)
+        {
+            if (!frameHasFolder)
+            {
+                // The build folder is step 2's, not a second copy of it: two folders that could
+                // disagree about which build this is would be a way to write last build's JSONs.
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.Label("Pick the build in step 2 to see what needs one.", ToolStyles.Hint);
+                    GUILayout.FlexibleSpace();
+                    DrawFromBuildButton(GUILayoutUtility.GetRect(ToolStyles.ButtonM, ToolStyles.ControlHeight,
+                        GUILayout.Width(ToolStyles.ButtonM), GUILayout.Height(ToolStyles.ControlHeight)));
+                }
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(descriptionScanError))
+            {
+                EditorGUILayout.HelpBox(descriptionScanError, MessageType.Error);
+                return;
+            }
+
+            // Only while there is nothing to show. A rescan keeps the previous answer on screen
+            // rather than blanking the card every time the window is focused.
+            if (scan == null)
+            {
+                GUILayout.Label("Reading the build…", ToolStyles.Hint);
+                return;
+            }
+
+            var list = scan.Templates;
+
+            // Says out loud that the per-device copies were collapsed. An MTX build writes every
+            // bundle once per device, so "412 files · 103 bundles" is the reassurance that four
+            // copies of one bundle did not become four JSONs.
+            GUILayout.Label(BuildSummary(scan), ToolStyles.Hint);
+
+            // Nothing recognised is not the same as nothing needing one, and staying quiet about
+            // it is how a build from another branch reads as a build with no popups in it.
+            if (scan.Bundles == 0 && scan.Files > 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "None of these is a bundle this project builds, so there is nothing here to "
+                    + "describe:\n\n" + UnmatchedList(scan)
+                    + "\n\nA build made on another branch is the usual reason — the JSON is "
+                    + "generated from the prefab, so it has to come from the project that holds it.",
+                    MessageType.Warning);
+                return;
+            }
+
+            if (list.Count == 0)
+            {
+                // And no more than that. Bundles that need no JSON are the ordinary case, not a
+                // problem to flag — badges, stamps and dynamic resources never need one.
+                return;
+            }
+
+            GUILayout.Space(ToolStyles.SpaceS);
+
+            const int MaxRows = 8;
+            var shown = Mathf.Min(MaxRows, list.Count);
+            for (var i = 0; i < shown; i++) DrawConfigJsonRow(list[i]);
+
+            if (list.Count > shown)
+                GUILayout.Label("…and " + (list.Count - shown) + " more.", ToolStyles.Hint);
+
+            GUILayout.Space(ToolStyles.SpaceM);
+
+            var writable = WritableCount(list);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new ToolStyles.DisabledScope(!frameHasJsonFolder || writable == 0))
+                {
+                    var label = writable == 1 ? "Write 1 JSON" : "Write " + writable + " JSONs";
+                    if (GUILayout.Button(label, ToolStyles.Primary, GUILayout.Width(ToolStyles.ButtonL),
+                            GUILayout.Height(ToolStyles.ActionHeight)))
+                        WriteDescriptions();
+                }
+
+                GUILayout.Space(ToolStyles.SpaceS);
+
+                // Emitted whether or not there is anything to say: a label that comes and goes is a
+                // control that comes and goes, and the two passes over this method have to agree.
+                ToolStyles.ColouredLabel(frameDescriptionStatus, ToolStyles.Hint, ToolStyles.Muted);
+
+                // No Reveal button: the drop zone above names the folder and opens it on a
+                // double-click, so a button for the same thing is a second door to one room.
+                GUILayout.FlexibleSpace();
+            }
+
+            if (!string.IsNullOrEmpty(frameDescriptionErrors))
+                EditorGUILayout.HelpBox(frameDescriptionErrors, MessageType.Error);
+        }
+
+        /// <summary>What the build holds, before any of it is filtered down to templates.</summary>
+        private static string BuildSummary(DescriptionScan scan)
+        {
+            var files = scan.Files + (scan.Files == 1 ? " file" : " files");
+
+            // The nothing-recognised case gets its own sentence rather than "0 bundles · none
+            // needs a config JSON", which reads as a clean bill of health.
+            if (scan.Bundles == 0 && scan.Files > 0)
+                return files + " · nothing this project builds";
+
+            var text = files + " · " + scan.Bundles + (scan.Bundles == 1 ? " bundle" : " bundles");
+
+            var needed = scan.Templates.Count;
+            return text + " · " + (needed == 0
+                ? "none needs a config JSON"
+                : needed + (needed == 1 ? " needs one" : " need one"));
+        }
+
+        /// <summary>The unrecognised names, capped, so the box says which build this is.</summary>
+        private static string UnmatchedList(DescriptionScan scan)
+        {
+            var text = string.Join("\n", scan.Unmatched.ToArray());
+            var hidden = scan.UnmatchedCount - scan.Unmatched.Count;
+            return hidden > 0 ? text + "\n…and " + hidden + " more." : text;
+        }
+
+        private static int WritableCount(List<TemplateDescription> list)
+        {
+            var n = 0;
+            foreach (var description in list) if (description.CanWrite) n++;
+            return n;
+        }
+
+        /// <summary>One template, what will happen to its file, and a way to go and look at it.</summary>
+        private void DrawConfigJsonRow(TemplateDescription description)
+        {
+            var rect = GUILayoutUtility.GetRect(0, RowHeight, GUILayout.ExpandWidth(true));
+
+            // The prefab name, because that is what the exporter names the file — not the bundle
+            // name the build wrote, which Unity lower-cases and which therefore often differs.
+            var tooltip = description.AssetPath +
+                          "\nBundle: " + string.Join(", ", description.Bundles.ToArray()) +
+                          "\nBuilt " + description.Copies + (description.Copies == 1
+                              ? " time; one JSON covers it."
+                              : " times, once per device; one JSON covers them all.");
+
+            var nameRect = new Rect(rect.x, rect.y, rect.width - ToolStyles.MetaWidth - ToolStyles.SpaceS, rect.height);
+            if (GUI.Button(nameRect, new GUIContent(description.FileName, tooltip), ToolStyles.RowLabel))
+                EditorGUIUtility.PingObject(AssetDatabase.LoadAssetAtPath<GameObject>(description.AssetPath));
+
+            var metaRect = new Rect(rect.xMax - ToolStyles.MetaWidth, rect.y, ToolStyles.MetaWidth, rect.height);
+
+            string meta;
+            Color colour;
+            if (!description.CanWrite)
+            {
+                meta = "clash";
+                colour = ToolStyles.Err;
+            }
+            else if (!string.IsNullOrEmpty(description.Error))
+            {
+                meta = "failed";
+                colour = ToolStyles.Err;
+            }
+            else if (!frameHasJsonFolder)
+            {
+                meta = "";
+                colour = ToolStyles.Muted;
+            }
+            else if (description.Present)
+            {
+                meta = "replaces";
+                colour = ToolStyles.Muted;
+            }
+            else
+            {
+                meta = "new";
+                colour = ToolStyles.Ok;
+            }
+
+            // Rect-drawn, not layout-driven, so a row whose verdict changes mid-frame cannot
+            // change how many controls this pass emitted. The failures themselves are collected
+            // into one frozen block below the list.
+            ToolStyles.ColouredLabel(metaRect, meta, ToolStyles.ColumnHeaderRight, colour);
+        }
+
+        private static bool AllPresent(List<TemplateDescription> list)
+        {
+            foreach (var description in list)
+                if (!description.Present) return false;
+            return true;
+        }
+
+        /// <summary>Whether the chosen output folder is still there, on the same throttle as the build's.</summary>
+        private bool JsonFolderExists()
+        {
+            var now = EditorApplication.timeSinceStartup;
+            if (now - lastJsonProbe > ProbeInterval)
+            {
+                lastJsonProbe = now;
+                jsonFolderExists = !string.IsNullOrEmpty(jsonPath) && Directory.Exists(jsonPath);
+                RefreshPresence();
+            }
+            return jsonFolderExists;
+        }
+
+        /// <summary>
+        /// Whether each JSON is already in the folder, so a row can say "replaces" before the file
+        /// is replaced. Cheap enough for the folder probe's half-second: a build has a handful of
+        /// these, not thousands.
+        /// </summary>
+        private void RefreshPresence()
+        {
+            if (descriptions == null) return;
+            foreach (var description in descriptions.Templates)
+                description.Present = jsonFolderExists &&
+                                      File.Exists(Path.Combine(jsonPath, description.FileName));
+        }
+
+        /// <summary>
+        /// How tall the review list should be.
+        ///
+        /// Grows with the number of rows so a short review is not a mostly-empty box, and stops at
+        /// roughly half the window so the cards above and below it stay reachable — the page can
+        /// scroll now, but a list that ate the whole viewport would push everything else out of
+        /// sight and make you scroll to find the Upload button under it.
+        ///
+        /// The list has its own scroll bar and only draws the rows on screen, so capping it costs
+        /// nothing but a shorter window into the same rows.
+        /// </summary>
+        private float ReviewListHeight(int rowCount)
+        {
+            const float minimum = 80f;
+            var wanted = rowCount * RowHeight + 2f;
+            var ceiling = Mathf.Max(minimum, position.height * 0.5f);
+            return Mathf.Clamp(wanted, minimum, ceiling);
         }
 
         private bool CanReview() =>
@@ -1064,6 +1407,9 @@ namespace Utilities.Editor.EasyUpload
 
             GUILayout.Space(ToolStyles.SpaceL);
             DrawDroppedFilesCard();
+
+            GUILayout.Space(ToolStyles.SpaceL);
+            DrawJsonFoldersCard();
         }
 
         /// <summary>
@@ -1367,6 +1713,122 @@ namespace Utilities.Editor.EasyUpload
             }
         }
 
+        /// <summary>
+        /// Which asset folders produce a config JSON.
+        ///
+        /// This list is the whole of the rule. A badge carries the same DynamicTemplate a popup
+        /// does, and a multiplier stamp or a dynamic resource carries none at all — so no component
+        /// test separates the ones that get a JSON from the ones that do not, and where the prefab
+        /// lives is the only signal there is. Editable because that is a team convention the project
+        /// states nowhere: a new kind of template should be a line here, not a code change.
+        /// </summary>
+        private void DrawJsonFoldersCard()
+        {
+            using (new EditorGUILayout.VerticalScope(ToolStyles.Card))
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.Label("Config JSON folders", ToolStyles.CardTitle);
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(settings.jsonFolders.Count + " folder" +
+                                    (settings.jsonFolders.Count == 1 ? "" : "s"), ToolStyles.StatusText);
+                }
+
+                GUILayout.Space(ToolStyles.SpaceXS);
+                GUILayout.Label("Step 4 writes a JSON for a bundle only when its prefab is under one of "
+                    + "these, and everything nested under a folder counts. Badges, stamps and dynamic "
+                    + "resources are excluded by being left out — a badge has the same template "
+                    + "component a popup does, so nothing else can tell them apart.",
+                    ToolStyles.Hint);
+                GUILayout.Space(ToolStyles.SpaceM);
+
+                // Mutations are deferred to after the loop, for the same reason as the list above.
+                var removeAt = -1;
+                var changed = false;
+
+                for (var i = 0; i < settings.jsonFolders.Count; i++)
+                {
+                    using (new EditorGUILayout.HorizontalScope())
+                    {
+                        var edited = EditorGUILayout.TextField(settings.jsonFolders[i]);
+                        if (edited != settings.jsonFolders[i])
+                        {
+                            settings.jsonFolders[i] = edited;
+                            changed = true;
+                        }
+
+                        var missing = string.IsNullOrWhiteSpace(settings.jsonFolders[i]) ||
+                                      !AssetDatabase.IsValidFolder(settings.jsonFolders[i]);
+
+                        // A typo here is silent otherwise: the folder simply never matches, and
+                        // step 4 says the build needs nothing.
+                        ToolStyles.ColouredLabel(missing ? "not a folder" : "", ToolStyles.Hint,
+                            ToolStyles.Err, GUILayout.Width(ToolStyles.MetaWidth));
+
+                        if (GUILayout.Button(new GUIContent("−", "Remove this folder"),
+                                ToolStyles.Secondary, GUILayout.Width(ToolStyles.IconWidth),
+                                GUILayout.Height(ToolStyles.ControlHeight)))
+                            removeAt = i;
+                    }
+                }
+
+                if (settings.jsonFolders.Count == 0)
+                    EditorGUILayout.HelpBox("No folders listed, so step 4 will never find anything to "
+                        + "write.", MessageType.Warning);
+
+                GUILayout.Space(ToolStyles.SpaceS);
+
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    if (GUILayout.Button("Add folder", ToolStyles.Secondary,
+                            GUILayout.Width(ToolStyles.ButtonL), GUILayout.Height(ToolStyles.ControlHeight)))
+                    {
+                        settings.jsonFolders.Add("");
+                        changed = true;
+                    }
+
+                    GUILayout.FlexibleSpace();
+
+                    using (new ToolStyles.DisabledScope(IsDefaultJsonFolders()))
+                    {
+                        if (GUILayout.Button(new GUIContent("Reset to defaults",
+                                    string.Join(", ", EasyUploadSettings.DefaultJsonFolders)),
+                                ToolStyles.Secondary, GUILayout.Width(ToolStyles.ButtonL),
+                                GUILayout.Height(ToolStyles.ControlHeight)))
+                        {
+                            settings.jsonFolders = new List<string>(EasyUploadSettings.DefaultJsonFolders);
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (removeAt >= 0)
+                {
+                    settings.jsonFolders.RemoveAt(removeAt);
+                    changed = true;
+                }
+
+                if (!changed) return;
+
+                settings.Save();
+
+                // Step 4's answer was worked out against the old list, so it is now a statement
+                // about a rule that no longer applies.
+                descriptions = null;
+                descriptionScanRoot = null;
+                ScanDescriptions();
+            }
+        }
+
+        private bool IsDefaultJsonFolders()
+        {
+            var defaults = EasyUploadSettings.DefaultJsonFolders;
+            if (settings.jsonFolders.Count != defaults.Length) return false;
+            for (var i = 0; i < defaults.Length; i++)
+                if (settings.jsonFolders[i] != defaults[i]) return false;
+            return true;
+        }
+
         private bool IsDefaultDropList()
         {
             var defaults = EasyUploadSettings.DefaultDroppedFiles;
@@ -1382,14 +1844,19 @@ namespace Utilities.Editor.EasyUpload
         /// Accepts a folder dragged from Finder/Explorer and one dragged out of the Project window —
         /// Unity reports the second as a path relative to the project, so it needs rooting first.
         /// </summary>
-        private void HandleDrop(Rect rect)
+        private void HandleDrop(Rect rect, DropZone zone, Action<string> onDrop)
         {
             var e = Event.current;
 
             if (e.type == EventType.DragExited || e.type == EventType.MouseLeaveWindow)
             {
-                dragOver = false;
-                Repaint();
+                // Only ever clears its own highlight. Clearing unconditionally would mean each
+                // zone turning the other one off.
+                if (dragOverZone == zone)
+                {
+                    dragOverZone = DropZone.None;
+                    Repaint();
+                }
                 return;
             }
 
@@ -1398,9 +1865,14 @@ namespace Utilities.Editor.EasyUpload
             var inside = rect.Contains(e.mousePosition);
             var folder = inside ? FirstFolder(DragAndDrop.paths) : null;
 
-            if (dragOver != (folder != null))
+            if (folder != null && dragOverZone != zone)
             {
-                dragOver = folder != null;
+                dragOverZone = zone;
+                Repaint();
+            }
+            else if (folder == null && dragOverZone == zone)
+            {
+                dragOverZone = DropZone.None;
                 Repaint();
             }
 
@@ -1411,8 +1883,8 @@ namespace Utilities.Editor.EasyUpload
             if (e.type == EventType.DragPerform && folder != null)
             {
                 DragAndDrop.AcceptDrag();
-                dragOver = false;
-                SetBuildFolder(folder);
+                dragOverZone = DropZone.None;
+                onDrop(folder);
             }
             e.Use();
         }
@@ -1438,12 +1910,165 @@ namespace Utilities.Editor.EasyUpload
             plan = null;
             job = null;
             lastFolderProbe = double.NegativeInfinity;   // the folder just changed; do not wait to notice
+            descriptionStatus = "";
             folderFiles = -1;
             folderBytes = 0;
             settings.lastBuildPath = path;
             settings.Save();
             if (!string.IsNullOrEmpty(path)) ScanFolder();
+            ScanDescriptions();
             Repaint();
+        }
+
+        private void SetJsonFolder(string path)
+        {
+            jsonPath = path;
+            descriptionStatus = "";
+            lastJsonProbe = double.NegativeInfinity;   // the folder just changed; do not wait to notice
+            settings.lastJsonPath = path;
+            settings.Save();
+            Repaint();
+        }
+
+        /// <summary>Where a folder picker should start when nothing has been chosen yet.</summary>
+        private static string DesktopFolder()
+        {
+            // Empty on a machine with no desktop folder, which the picker treats as "wherever you
+            // were last" — a better default than a path that does not exist.
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            return Directory.Exists(desktop) ? desktop : "";
+        }
+
+        /// <summary>
+        /// Which bundles in the build carry a template, and so have a JSON to write.
+        ///
+        /// Split across two threads because the two halves have opposite requirements: walking a
+        /// build folder of thousands of files must not block the editor, and the asset database may
+        /// only be read on the main thread. The walk collects names; the main thread turns them
+        /// into templates.
+        /// </summary>
+        private void ScanDescriptions()
+        {
+            descriptionScanError = "";
+
+            if (!TemplateDescriptions.ToolPresent || string.IsNullOrEmpty(buildPath) ||
+                !Directory.Exists(buildPath))
+            {
+                descriptions = null;
+                return;
+            }
+
+            if (descriptionScanRoot == buildPath) return;
+
+            var root = buildPath;
+            var patterns = new List<string>(settings.droppedFiles);
+            descriptionScanRoot = root;
+
+            RunInBackground(() =>
+            {
+                BuildScan walk;
+                try
+                {
+                    walk = TemplateDescriptions.Scan(root, patterns);
+                }
+                catch (Exception e)
+                {
+                    Post(() =>
+                    {
+                        // A folder that vanished mid-walk is the build being rebuilt underneath
+                        // this, not a fault worth an exception in the console.
+                        if (root != descriptionScanRoot) return;   // a newer walk owns the card
+                        descriptionScanRoot = null;
+                        descriptionScanError = "Could not read the build folder: " + e.Message;
+                        Repaint();
+                    });
+                    return;
+                }
+
+                Post(() =>
+                {
+                    // The folder can have been changed again while this walked; that scan owns
+                    // the card now, and it will clear the marker when it lands.
+                    if (root != descriptionScanRoot) return;
+                    descriptionScanRoot = null;
+
+                    descriptions = TemplateDescriptions.Resolve(walk, settings.jsonFolders);
+                    RefreshPresence();
+                    Repaint();
+                });
+            });
+        }
+
+        /// <summary>
+        /// Writes every JSON this build needs into the chosen folder, replacing what is there.
+        ///
+        /// One template failing validation does not stop the others: a build with three popups in
+        /// it, one of them broken, should still hand over the two that are fine, with the third
+        /// named rather than the whole thing refused.
+        /// </summary>
+        private void WriteDescriptions()
+        {
+            if (descriptions == null || descriptions.Templates.Count == 0) return;
+            if (string.IsNullOrEmpty(jsonPath) || !Directory.Exists(jsonPath))
+            {
+                descriptionStatus = "That folder is not there.";
+                return;
+            }
+
+            var written = 0;
+            var failed = 0;
+            var held = 0;
+
+            foreach (var description in descriptions.Templates)
+            {
+                // A clash is two templates aiming at one file. Writing either would put a file
+                // there that says it describes the other, which is worse than writing neither.
+                if (!description.CanWrite)
+                {
+                    held++;
+                    continue;
+                }
+
+                description.Error = TemplateDescriptions.Export(description, jsonPath);
+                if (string.IsNullOrEmpty(description.Error)) written++;
+                else failed++;
+            }
+
+            descriptionStatus = written + " written";
+            if (failed > 0) descriptionStatus += ", " + failed + " failed";
+            if (held > 0) descriptionStatus += ", " + held + " held back";
+
+            lastJsonProbe = double.NegativeInfinity;   // the rows say "replaces" from now on
+            Repaint();
+        }
+
+        /// <summary>
+        /// The clashes in this build and the failures from the last write, as one block. Empty when
+        /// there are neither.
+        /// </summary>
+        private string DescriptionErrors()
+        {
+            if (descriptions == null) return "";
+
+            var lines = new List<string>();
+            var clashes = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var description in descriptions.Templates)
+            {
+                // One message per clashing pair, not one per row: both rows carry the same text.
+                if (!description.CanWrite && clashes.Add(description.Conflict))
+                    lines.Add(description.Conflict);
+
+                if (!string.IsNullOrEmpty(description.Error))
+                    lines.Add(description.FileName + ": " + description.Error);
+            }
+
+            if (lines.Count == 0) return "";
+
+            var shown = Mathf.Min(3, lines.Count);
+            var text = string.Join("\n", lines.GetRange(0, shown).ToArray());
+            if (lines.Count > shown) text += "\n…and " + (lines.Count - shown) + " more.";
+            return text;
         }
 
         private string FolderSummary()

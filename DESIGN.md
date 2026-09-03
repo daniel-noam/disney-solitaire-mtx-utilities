@@ -29,6 +29,14 @@ not inline in one window.
 reports its content width as its *minimum* width, so a long path or ARN does not get clipped — it
 pushes the window wider than the screen. Use `Elide`.
 
+**6. A drop zone that holds something is also a way to go and look at it.** See
+`ToolStyles.DropZone`. Every drop target in the toolset is the same box, and once it names a file or
+a folder it gets a link cursor, a hover tint and double-click to open — into the Project window for
+an asset under `Assets/`, into Finder or Explorer for anything else. Double, not single: the box is
+a drag target first, and a single click that pulled Finder in front of the editor would fire every
+time someone clicked the window to focus it before dragging into it. An *empty* zone gets none of
+this, because a box that lights up under the pointer is promising an action it does not have.
+
 ## Three habits no style can enforce
 
 **Call `ToolStyles.Ensure()` first**, in every entry point that reads a style — a window's `OnGUI`,

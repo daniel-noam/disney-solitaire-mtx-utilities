@@ -41,6 +41,10 @@ namespace Utilities.Editor
             ("Rename",
                 window => new GraphIdentifiersPanel(window),
                 panel => ((GraphIdentifiersPanel) panel).Rebuild()),
+
+            ("Cleanup",
+                window => new GraphCleanupPanel(window),
+                panel => ((GraphCleanupPanel) panel).Rebuild()),
         };
 
         /// <summary>

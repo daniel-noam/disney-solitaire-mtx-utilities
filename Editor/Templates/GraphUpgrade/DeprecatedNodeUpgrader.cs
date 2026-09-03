@@ -190,12 +190,12 @@ namespace Utilities.Editor
         /// until its id is put where the old one's was — the node comes back sitting on top of the
         /// group it used to be part of, which looks like the group lost it.
         ///
-        /// Reached by reflection because Graph.Groups is internal to its own assembly. Group itself
-        /// is public, so only the way in is awkward.
+        /// Reached through GraphInternals, which is where the way into the graph's internal lists
+        /// lives.
         /// </summary>
         private static void InheritGroups(Graph graph, string oldId, string newId)
         {
-            var groups = GroupsOf(graph);
+            var groups = GraphInternals.GroupsOf(graph);
             if (groups == null) return;
 
             foreach (var group in groups)
@@ -206,17 +206,6 @@ namespace Utilities.Editor
                     if (group.nodes[i] == oldId) group.nodes[i] = newId;
             }
         }
-
-        private static List<Group> GroupsOf(Graph graph)
-        {
-            if (GroupsField == null)
-                GroupsField = typeof(Graph).GetField("_groups",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
-
-            return GroupsField?.GetValue(graph) as List<Group>;
-        }
-
-        private static FieldInfo GroupsField;
 
         /// <summary>
         /// Rebuilds every edge the old node had, on the ports the new one shares by name.

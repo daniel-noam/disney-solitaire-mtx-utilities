@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
 
@@ -573,6 +574,101 @@ namespace Utilities.Editor
         /// A dashed outline, drawn as short solid runs. IMGUI cannot stroke a dashed path, and a
         /// dashed edge is the one shape that reads unmistakably as "drop something here".
         /// </summary>
+        /// <summary>
+        /// The dashed drag target, painted the one way, with the one set of behaviours. Every
+        /// window that has a drop zone draws its own two lines of text into the rect, and gets its
+        /// fill, border, hover and double-click from here.
+        ///
+        /// A zone that holds something is a thing you can go and look at, so it says so: a link
+        /// cursor, a hover tint, and double-click to open. Double rather than single, because the
+        /// zone is a drag target first and a single click that pulled Finder in front of the editor
+        /// would fire every time someone clicked the window to focus it before dragging into it.
+        /// </summary>
+        /// <param name="dragOver">True while a droppable drag is over this zone.</param>
+        /// <param name="openPath">
+        /// What a double-click should open. Empty for a zone holding nothing, or holding something
+        /// with no single path behind it — the hover affordance is suppressed too, so the box never
+        /// offers an action it does not have.
+        /// </param>
+        public static void DropZone(Rect rect, bool dragOver, string openPath)
+        {
+            var canOpen = !dragOver && CanOpen(openPath);
+            var hovered = canOpen && rect.Contains(Event.current.mousePosition);
+
+            if (canOpen) EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
+
+            var fill = dragOver
+                ? Blend(InsetBg, Accent, 0.25f)
+                : hovered
+                    ? Blend(InsetBg, Accent, 0.08f)
+                    : InsetBg;
+
+            var edge = dragOver
+                ? Accent
+                : hovered
+                    ? Blend(Faint, Accent, 0.5f)
+                    : Faint;
+
+            EditorGUI.DrawRect(rect, fill);
+            DashedBorder(rect, edge, 5f, 4f, dragOver ? 2f : 1f);
+
+            if (!canOpen) return;
+
+            var e = Event.current;
+            if (e.type != EventType.MouseDown || e.button != 0) return;
+            if (e.clickCount < 2 || !rect.Contains(e.mousePosition)) return;
+
+            Open(openPath);
+            e.Use();
+        }
+
+        /// <summary>Whether there is something at this path for a double-click to open.</summary>
+        public static bool CanOpen(string path) =>
+            !string.IsNullOrEmpty(path) &&
+            (IsProjectAsset(path) || File.Exists(path) || Directory.Exists(path));
+
+        /// <summary>
+        /// Opens it where it lives: an asset inside the project is pinged in the Project window,
+        /// anything else is revealed in the OS file browser. Selecting a project asset in Finder
+        /// would be technically correct and useless — the place you work on it is the project.
+        /// </summary>
+        public static void Open(string path)
+        {
+            if (IsProjectAsset(path))
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(path);
+                if (asset != null)
+                {
+                    EditorGUIUtility.PingObject(asset);
+                    Selection.activeObject = asset;
+                    return;
+                }
+            }
+
+            EditorUtility.RevealInFinder(path);
+        }
+
+        /// <summary>
+        /// The line to append to a drop zone's tooltip, naming where a double-click will go. Empty
+        /// when there is nothing to open, so it can be concatenated unconditionally.
+        /// </summary>
+        public static string OpenTip(string path)
+        {
+            if (!CanOpen(path)) return "";
+
+            return IsProjectAsset(path)
+                ? "\n\nDouble-click to show it in the Project window."
+                : "\n\nDouble-click to reveal it in " + FileBrowserName + ".";
+        }
+
+        /// <summary>What the OS file browser is called on this machine.</summary>
+        public static string FileBrowserName =>
+            Application.platform == RuntimePlatform.WindowsEditor ? "Explorer" : "Finder";
+
+        private static bool IsProjectAsset(string path) =>
+            !string.IsNullOrEmpty(path) &&
+            path.Replace('\\', '/').StartsWith("Assets/", StringComparison.Ordinal);
+
         public static void DashedBorder(Rect rect, Color color, float dash = 5f, float gap = 4f, float thickness = 1f)
         {
             var step = dash + gap;

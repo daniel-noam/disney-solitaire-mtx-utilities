@@ -426,11 +426,7 @@ namespace Utilities.Editor
             var rect = GUILayoutUtility.GetRect(0, ToolStyles.DropZoneHeight, GUILayout.ExpandWidth(true));
             bool hovering = HandleTextureDrop(rect);
 
-            EditorGUI.DrawRect(rect, hovering
-                ? ToolStyles.Blend(ToolStyles.InsetBg, ToolStyles.Accent, 0.25f)
-                : ToolStyles.InsetBg);
-            ToolStyles.DashedBorder(rect, hovering ? ToolStyles.Accent : ToolStyles.Faint,
-                5f, 4f, hovering ? 2f : 1f);
+            ToolStyles.DropZone(rect, hovering, target != null ? target.DisplayPath : "");
 
             const float lineOne = 18f;
             const float lineTwo = 16f;

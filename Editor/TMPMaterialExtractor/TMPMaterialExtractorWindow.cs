@@ -219,19 +219,15 @@ namespace Utilities.Editor
         {
             var rect = GUILayoutUtility.GetRect(0, ToolStyles.DropZoneHeight, GUILayout.ExpandWidth(true));
 
-            EditorGUI.DrawRect(rect, rootDragHover
-                ? ToolStyles.Blend(ToolStyles.InsetBg, ToolStyles.Accent, 0.25f)
-                : ToolStyles.InsetBg);
-            ToolStyles.DashedBorder(rect, rootDragHover ? ToolStyles.Accent : ToolStyles.Faint,
-                5f, 4f, rootDragHover ? 2f : 1f);
+            string normalized = NormalizeAssetsPath(rootFolderPath);
+
+            ToolStyles.DropZone(rect, rootDragHover, normalized);
 
             const float lineOne = 18f;
             const float lineTwo = 16f;
             var top = rect.y + (rect.height - (lineOne + lineTwo)) / 2f;
             var upper = new Rect(rect.x + 10, top, rect.width - 20, lineOne);
             var lower = new Rect(rect.x + 10, top + lineOne, rect.width - 20, lineTwo);
-
-            string normalized = NormalizeAssetsPath(rootFolderPath);
 
             if (string.IsNullOrEmpty(normalized))
             {

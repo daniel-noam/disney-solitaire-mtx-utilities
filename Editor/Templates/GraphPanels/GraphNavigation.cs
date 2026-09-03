@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using BlueGraph;
 using BlueGraph.Editor;
 
 namespace Utilities.Editor
@@ -20,6 +21,36 @@ namespace Utilities.Editor
         {
             if (string.IsNullOrEmpty(nodeId)) return;
             Focus(canvas, tab, new[] { nodeId });
+        }
+
+        /// <summary>
+        /// Puts the view on a group, box and all. Works on an empty one, which is the case that
+        /// matters — a group with nothing left in it has no node to frame instead.
+        /// </summary>
+        public static void Focus(CanvasView canvas, Group group)
+        {
+            if (canvas == null || group == null) return;
+
+            canvas.SwitchToTab(group.tabIndex);
+
+            canvas.ExecuteWhenLayoutReady(() =>
+            {
+                GroupView found = null;
+
+                // The views for a tab are built when it is switched to, so this has to run after
+                // the layout the same way node lookups do.
+                canvas.graphElements.ForEach(element =>
+                {
+                    if (found == null && element is GroupView view && view.target == group)
+                        found = view;
+                });
+
+                if (found == null) return;
+
+                canvas.ClearSelection();
+                canvas.AddToSelection(found);
+                canvas.FrameSelection();
+            });
         }
 
         /// <summary>
