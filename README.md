@@ -4,47 +4,51 @@ Editor tools for the Disney Solitaire MTX projects. Editor-only — nothing here
 
 ## Adding it to a project
 
+These tools are **cloned into** a project, not added as a submodule. The project's git ends up
+with no record of them at all — nothing to commit, nothing to stage or discard, and nothing for
+somebody who does not want them to inherit.
+
 ### In Fork
 
-1. Open the project's repository in Fork, and make sure you are on the branch you want the
-   submodule added to — it lands as a commit on that branch.
-2. **Repository → Add Submodule…**
-3. Fill in the two fields:
-   - **URL**: `git@github.com:daniel-noam/disney-solitaire-mtx-utilities`
-   - **Path**: `Assets/Shared/disney-solitaire-mtx-utilities`
+1. **File → Clone**
+2. Fill in:
+   - **Repository URL**: `git@github.com:daniel-noam/disney-solitaire-mtx-utilities`
+   - **Parent directory**: your project's `Assets/Shared`
+   - **Name**: `disney-solitaire-mtx-utilities`
+3. Clone. Unity will import it, and the tools appear under `Utilities/` in the menu bar.
 
-   The path matters. Unity finds assets by where they sit, and the assembly definitions expect
-   this one, so putting it elsewhere means the tools compile but nothing else in the project can
-   see them.
-4. **Add Submodule**, then commit and push. The commit contains `.gitmodules` and a pointer to
-   the exact commit of this repo — not its files.
-
-<!-- Add screenshot of Fork's Add Submodule dialog here -->
+<!-- Add screenshot of Fork's Clone dialog here -->
 
 ### On the command line
 
 ```
-git submodule add git@github.com:daniel-noam/disney-solitaire-mtx-utilities Assets/Shared/disney-solitaire-mtx-utilities
+git clone git@github.com:daniel-noam/disney-solitaire-mtx-utilities \
+    Assets/Shared/disney-solitaire-mtx-utilities
 ```
 
-### Once somebody else has added it
+### It hides itself
 
-Cloning a repository does not bring its submodules down with it — a fresh clone leaves this
-folder empty, and Unity will report the missing assemblies rather than the missing folder.
+You do not have to tell the project to ignore it. On first load the tools write two local,
+untracked things:
 
-- **Fork**: it appears under Submodules in the sidebar; right-click it and choose **Init**, or
-  use **Repository → Update Submodules**.
-- **Command line**: `git submodule update --init`
+- `Assets/Shared/.gitignore`, listing this folder and its `.meta`
+- a line in `.git/info/exclude` for that `.gitignore`
 
-### Getting later versions
+Both are local to your machine and neither can end up in a commit. The reason it takes two files
+rather than one is that a Unity `.gitignore` normally ends with `![Aa]ssets/**/*.meta` so meta
+files are never lost by accident, and a rule in `.gitignore` beats anything in
+`.git/info/exclude` — so the folder would vanish and its `.meta` would not. Git ranks ignore files
+by depth, so a `.gitignore` sitting beside this repository overrides the one at the project root.
 
-A submodule is pinned to one commit, so new work here does not arrive on its own — that is the
-point, since it means this repo cannot change under a branch that was working.
+### Updating
 
-- **Fork**: right-click the submodule → **Fetch**, then **Update**.
-- **Command line**: `git submodule update --remote`
+Because it is a plain clone, it is just `git pull` in this folder — or **Pull** in Fork with this
+repository selected. Nothing in the project needs committing, and nothing pins a version, so you
+get the latest whenever you pull.
 
-Either way the project repo now points at a newer commit, which is itself a change to commit.
+### Contributing
+
+Commit and push here as you would in any repository. Everyone else picks it up on their next pull.
 
 ## Assemblies
 
