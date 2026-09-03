@@ -88,6 +88,8 @@ Inside the behaviour graph editor, on the toolbar:
 - **Min Version** — which nodes decide the template's minimum client version.
 - **Deprecated** — the deprecated nodes, and a button to swap each for its replacement,
   carrying the connections and values across.
+- **Rename** — every method id and trigger name in the graph, each renamed across the nodes
+  that use it in one go, including the String nodes wired into them.
 
 ## Working on it
 

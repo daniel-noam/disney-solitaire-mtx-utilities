@@ -39,7 +39,10 @@ namespace Utilities.Editor
         private List<string> frameMatching = new List<string>();
         private int frameNew;
 
-        [MenuItem("Utilities/Dynamic Template Bindings Builder", false, 1010)]
+        /// <summary>The 2000 band, with the other template tools. See DESIGN.md.</summary>
+        private const int TemplateToolPriority = 2001;
+
+        [MenuItem("Utilities/Dynamic Template Bindings Builder", false, TemplateToolPriority)]
         public static void ShowWindow()
         {
             GetWindow<DynamicTemplateBindingsBuilderWindow>("Dynamic Template Bindings Builder")

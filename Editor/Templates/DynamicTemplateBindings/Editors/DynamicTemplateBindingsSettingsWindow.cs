@@ -15,7 +15,15 @@ namespace Utilities.Editor
 
         private DynamicTemplateBindingsSettings settings;
 
-        [MenuItem("Utilities/Dynamic Template Bindings Settings", false, 1009)]
+        /// <summary>
+        /// The 2000 band: the tools that need the template assemblies. Unity draws a separator
+        /// wherever consecutive priorities differ by more than ten, so the gap from the portable
+        /// tools at 1000 both groups them and keeps the two sets from ever running together as
+        /// either grows. See DESIGN.md.
+        /// </summary>
+        private const int TemplateToolPriority = 2000;
+
+        [MenuItem("Utilities/Dynamic Template Bindings Settings", false, TemplateToolPriority)]
         public static void ShowWindow()
         {
             GetWindow<DynamicTemplateBindingsSettingsWindow>("Dynamic Template Bindings Settings")

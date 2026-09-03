@@ -40,8 +40,9 @@ found by assembly scan and need no edits at all.
 
 ## Menu items
 
-- Under `Utilities/`, and the window title must match the menu item exactly.
-- Priorities are sequential from 1000; check what is taken before picking one.
+Under `Utilities/`, titled to match the menu item exactly, and numbered in the band for its
+assembly — 1000 for the portable tools, 2000 for the template ones. See
+[DESIGN.md](DESIGN.md#menu-items) for why the bands are what draw the separator.
 
 ## Editing project assets
 

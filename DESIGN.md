@@ -92,6 +92,26 @@ as panels rather than as slabs pushed against the window frame. `CardHeader(stri
 the numbered overload is only for panels that are steps taken in order — numbering panels that are
 merely panels tells the reader to look for a sequence that is not there.
 
+## Menu items
+
+Every tool sits under `Utilities/`, and **the window title must match its menu item exactly** —
+they are the same tool, and a window whose tab says something else is a tool you cannot find twice.
+
+Priorities run in bands:
+
+| Band | For |
+| --- | --- |
+| 1000– | The portable tools |
+| 2000– | Tools that need the template assemblies |
+
+Unity has no explicit separator for `MenuItem`. It draws one wherever two consecutive items differ
+in priority by more than ten, which is the whole mechanism — so the bands are what put a line
+between the two groups, and the gap between them is wide enough that neither can grow into the
+other and quietly merge the groups back together.
+
+Within a band, take the next free number, and check what is taken before picking one: two items
+sharing a priority order arbitrarily.
+
 ## Things learned the hard way
 
 - `GUI.contentColor` *multiplies* a style's colour. Recolour through `ColouredLabel`, which sets

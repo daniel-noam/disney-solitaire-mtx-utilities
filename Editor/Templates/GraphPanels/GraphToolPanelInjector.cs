@@ -37,6 +37,10 @@ namespace Utilities.Editor
             ("Deprecated",
                 window => new DeprecatedNodesPanel(window),
                 panel => ((DeprecatedNodesPanel) panel).Rebuild()),
+
+            ("Rename",
+                window => new GraphIdentifiersPanel(window),
+                panel => ((GraphIdentifiersPanel) panel).Rebuild()),
         };
 
         /// <summary>

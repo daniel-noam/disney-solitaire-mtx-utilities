@@ -12,27 +12,32 @@ namespace Utilities.Editor
     /// Read from property drawers, which run far more often than a window does, so the loaded copy
     /// is held in a static rather than re-read from EditorPrefs per row.
     /// </summary>
+    /// <summary>
+    /// Everything here is off until it is switched on. These reports walk the connected graph and
+    /// add to a component's inspector, which is worth having when you are working on bindings and
+    /// is noise when you are not — so the tool asks rather than assumes.
+    /// </summary>
     [Serializable]
     public class DynamicTemplateBindingsSettings
     {
         private const string PrefsKey = "Utilities.Editor.DynamicTemplateBindings.Settings";
 
         [Tooltip("The box at the top listing every key that is missing, unused or duplicated.")]
-        public bool showSummary = true;
+        public bool showSummary;
 
         [Tooltip("The '(3 refs)' after a key's label, saying how many graph nodes use it.")]
-        public bool showRefCounts = true;
+        public bool showRefCounts;
 
         [Tooltip("The warning icon beside a key that has something wrong with it.")]
-        public bool showInlineIssues = true;
+        public bool showInlineIssues;
 
         [Tooltip("Shade every other row, so a key and its value read as one entry.")]
-        public bool stripeRows = true;
+        public bool stripeRows;
 
         [Tooltip("The 'Rename key and graph references' entry on a key's right-click menu. This " +
                  "rewrites every node in the graph that mentions the key, so it does not depend " +
                  "on any of the reports above.")]
-        public bool renameMenuItem = true;
+        public bool renameMenuItem;
 
         private static DynamicTemplateBindingsSettings instance;
 
