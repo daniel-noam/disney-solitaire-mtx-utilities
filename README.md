@@ -82,20 +82,11 @@ SRDebugger or the backend config simply does not show that control.
 
 ### On the right-click menu
 
-Select a texture in the Project window, under **Sprite Editor**:
+Select a texture or a folder of them in the Project window:
 
-- **Open in Sprite Editor**
-- **Create Masks**
-- **Detect and Apply 9-Slice Borders**
-- **Clear 9-Slice Borders**
-
-The last three run on a whole selection at once, which is the point — they exist so you do not
-have to open a window for twenty sprites.
-
-Select anything, under **Git**:
-
-- **Add to Local Exclude** / **Remove from Local Exclude**
-- **Skip Worktree (keep local changes)** / **Stop Skipping Worktree**
+- **Open in Sprite Editor** — opens the window on it. It is the only item, because everything else
+  the window does either rewrites pixels or writes new files, and that belongs where the settings
+  behind it are visible.
 
 ### On the inspector
 
@@ -131,13 +122,6 @@ Two more reach in from a binding key's right-click menu:
   badge graph is yours to check.
 - **Show the nodes using this key** — types it into the canvas's own search, so its next and
   previous buttons walk the matches.
-
-### Quietly, without being asked
-
-- The tools keep themselves out of the host project's git — see *It hides itself* above.
-- Each tool registers its own settings file so those stay out of git too.
-- The Folder Structure Generator hands folders to the QuickNavigation tool if the project has one,
-  through reflection, so it costs nothing in projects that do not.
 
 ## Working on the repo
 

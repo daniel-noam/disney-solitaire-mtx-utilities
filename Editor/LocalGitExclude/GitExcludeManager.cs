@@ -575,12 +575,9 @@ namespace Utilities.Editor
         internal static int AddPathsToExclude(IEnumerable<string> assetPaths) =>
             ModifyExclude(assetPaths, true);
 
-        private static int RemovePathsFromExclude(IEnumerable<string> assetPaths) =>
-            ModifyExclude(assetPaths, false);
-
         /// <summary>
         /// Adds or removes the exclude entries for a set of asset paths, and reports how many assets
-        /// actually changed. Static because the asset context menus reach it without a window open.
+        /// actually changed. Static because GitExcludeReminder reaches it without a window open.
         /// </summary>
         private static int ModifyExclude(IEnumerable<string> assetPaths, bool add)
         {
@@ -657,12 +654,12 @@ namespace Utilities.Editor
         private static void NotifyWindowToRefresh()
         {
             // Resources.FindObjectsOfTypeAll rather than GetWindow: GetWindow focuses the window, which
-            // yanked the user out of the Project view every time they used the context menu.
+            // yanks the user out of whatever they were looking at when the reminder writes a path.
             foreach (var window in Resources.FindObjectsOfTypeAll<GitExcludeManager>())
                 window.RefreshFileContents();
         }
 
-        // ---- Project window context menu ---------------------------------------------------------
+        // ---- Selection -------------------------------------------------------------------------
 
         private static IEnumerable<string> SelectedAssetPaths()
         {
@@ -673,51 +670,9 @@ namespace Utilities.Editor
             }
         }
 
-        [MenuItem("Assets/Git/Add to Local Exclude", false, 20)]
-        public static void ContextMenuAddExclude()
-        {
-            int changed = AddPathsToExclude(new List<string>(SelectedAssetPaths()));
-
-            // Reports what happened rather than assuming success: re-running on already-excluded items,
-            // or running outside a Git repo, both used to log "added" regardless.
-            if (changed > 0)
-                Debug.Log($"<b>[Git Exclude]</b> Added {changed} item(s) to local exclude.");
-            else if (GitRepositoryInfo.Locate().IsValid)
-                Debug.Log("<b>[Git Exclude]</b> Selection was already excluded.");
-        }
-
-        [MenuItem("Assets/Git/Add to Local Exclude", true)]
-        public static bool ContextMenuAddExcludeValidate() => HasAssetSelection();
-
-        [MenuItem("Assets/Git/Remove from Local Exclude", false, 21)]
-        public static void ContextMenuRemoveExclude()
-        {
-            int changed = RemovePathsFromExclude(new List<string>(SelectedAssetPaths()));
-
-            if (changed > 0)
-                Debug.Log($"<b>[Git Exclude]</b> Removed {changed} item(s) from local exclude.");
-            else if (GitRepositoryInfo.Locate().IsValid)
-                Debug.Log("<b>[Git Exclude]</b> Selection was not in the local exclude file.");
-        }
-
-        [MenuItem("Assets/Git/Remove from Local Exclude", true)]
-        public static bool ContextMenuRemoveExcludeValidate() => HasAssetSelection();
-
-        [MenuItem("Assets/Git/Skip Worktree (keep local changes)", false, 40)]
-        public static void ContextMenuSkipWorktree() => SetSkipWorktreeForSelection(GitRepositoryInfo.Locate(), true);
-
-        [MenuItem("Assets/Git/Skip Worktree (keep local changes)", true)]
-        public static bool ContextMenuSkipWorktreeValidate() => HasAssetSelection();
-
-        [MenuItem("Assets/Git/Stop Skipping Worktree", false, 41)]
-        public static void ContextMenuStopSkipWorktree() => SetSkipWorktreeForSelection(GitRepositoryInfo.Locate(), false);
-
-        [MenuItem("Assets/Git/Stop Skipping Worktree", true)]
-        public static bool ContextMenuStopSkipWorktreeValidate() => HasAssetSelection();
-
         /// <summary>
         /// Applies skip-worktree to the current Project-window selection, expanding folders to the tracked
-        /// files they contain. Shared by the window buttons and the context menu.
+        /// files they contain.
         /// </summary>
         private static int SetSkipWorktreeForSelection(GitRepositoryInfo repository, bool skip)
         {
@@ -758,12 +713,6 @@ namespace Utilities.Editor
             int count = 0;
             foreach (string _ in SelectedAssetPaths()) count++;
             return count;
-        }
-
-        private static bool HasAssetSelection()
-        {
-            foreach (string _ in SelectedAssetPaths()) return true;
-            return false;
         }
     }
 }
