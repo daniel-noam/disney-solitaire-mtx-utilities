@@ -2,7 +2,7 @@
 
 Editor tools for the Disney Solitaire MTX projects. Editor-only — nothing here ships in a build.
 
-## Adding it to a project
+## Installing
 
 These tools are **cloned into** a project, not added as a submodule. The project's git ends up
 with no record of them at all — nothing to commit, nothing to stage or discard, and nothing for
@@ -46,26 +46,6 @@ Because it is a plain clone, it is just `git pull` in this folder — or **Pull*
 repository selected. Nothing in the project needs committing, and nothing pins a version, so you
 get the latest whenever you pull.
 
-### Contributing
-
-Commit and push here as you would in any repository. Everyone else picks it up on their next pull.
-
-## Assemblies
-
-Two, split by what they need, so the toolset drops into any project:
-
-| Assembly | Needs | Contents |
-| --- | --- | --- |
-| `Utilities.Editor` | Unity, TextMeshPro | The portable tools |
-| `Utilities.Editor.Templates` | The Domino template assemblies | Anything that touches behaviour graphs or bindings |
-
-The second is constrained to the `DOMINO_TEMPLATES` define, which template projects already
-set for the shared runtime code. A project without it simply does not compile that assembly —
-no missing-reference errors, and nothing to configure.
-
-Nothing here modifies the graph editor or any other project code. The tools that appear inside
-the graph editor attach themselves to it from the outside.
-
 ## The tools
 
 ### Windows, under `Utilities/`
@@ -73,7 +53,8 @@ the graph editor attach themselves to it from the outside.
 - **AssetBundle Viewer** — what is in a bundle, how big, and what it references.
 - **Folder Structure Generator** — create a folder tree from a saved profile.
 - **Sprite Editor** — 9-slice borders, cleanup and bleed, mask generation.
-- **EasyUpload** — drag a build folder, review the diff against S3, upload.
+- **EasyUpload** — drag a build folder, review the diff against S3, upload. Afterwards it hands
+  the config JSONs off to the campaign folder the build was staged in.
 - **Git Local Exclude Manager** — `.git/info/exclude` and skip-worktree, with a UI.
 - **Material Extractor & Assigner** — pull TMP materials out and reassign them.
 - **TMP Rich Text Builder** — compose and preview TMP rich text.
@@ -81,7 +62,8 @@ the graph editor attach themselves to it from the outside.
 Below the separator, only in projects with the template assemblies:
 
 - **Dynamic Template Bindings Settings** — what the bindings inspector shows.
-- **Dynamic Template Bindings Builder** — add a run of binding keys from one pattern.
+- **Dynamic Template Bindings Builder** — add a run of binding keys from one pattern, previewed
+  before it is committed, rather than sixty presses of **+** and sixty typed names.
 
 ### In the Unity toolbar
 
@@ -127,70 +109,58 @@ Select anything, under **Git**:
 
 ### Inside the behaviour graph editor
 
-Two toggles are added to the right-hand end of the graph editor's toolbar. Both panels start
-hidden — the canvas is what you opened the window for — and each rebuilds when you switch it on
-and from its own **Refresh** button, rather than every frame, because both walk every node of
-every subgraph.
+Four toggles on the right of the graph toolbar, all hidden until switched on:
 
-**Min Version** answers why a template asks for the client version it does. The version is shown
-large, then the line the bare number cannot give you — *"Without the 3 at 1.23.0, it would be
-1.13.0"* — because clearing the top tier buys nothing unless you clear all of it. Below that,
-every node carrying a version, worst first. Clicking a row frames that node; if it lives inside a
-subgraph the row says so and clicking opens *that* subgraph's window, not this one.
+- **Min Version** — which nodes decide the template's minimum client version, and what it would
+  drop to without them. Click a row to frame that node, wherever it lives.
+- **Deprecated** — every deprecated node, and a button to swap each for its replacement, carrying
+  the connections and field values across. What it cannot carry, it says before you press, and
+  lists afterwards.
+- **Rename** — every method id and trigger name in the graph, with what uses each, renamed across
+  all of them at once. A `CallMethod` pointing at a name no `OnMethod` answers to is not an error,
+  it is a flow that stops, so seeing the list is half the tool.
+- **Cleanup** — what the graph is still carrying from work already undone: dead node ids left in
+  groups, duplicates, groups stranded on a tab that no longer exists, empty comments. Each row
+  says what a press would cost before it is pressed.
 
-**Deprecated** lists every deprecated node in the graph and swaps each for its replacement:
+Two more reach in from a binding key's right-click menu:
 
-- **Upgrade** builds the new node, copies the field values both versions share, rebuilds every
-  connection on ports they share by name, and keeps the node's position, its tab, and its place
-  in any group it belonged to. The view stays exactly where it was, with the new node selected.
-- **Find** jumps to a node without changing it.
-- Rows are colour-coded: white swaps cleanly, amber swaps but loses something, grey has no
-  replacement to swap to. The tooltip names the exact ports and values at stake.
-- A `~` marks a replacement worked out from the naming rather than declared by the node itself.
-  Most deprecated nodes here never named a successor, so this is the common case — it is worth a
-  glance before pressing.
-- **Upgrade the clean ones** does the whole graph, but only the rows that lose nothing. Anything
-  that would drop a connection stays behind for its own button.
-- Anything that could not be reconnected is listed afterwards in the panel, with a **Find** to
-  reach the node that was left unconnected, and repeated in the console. It is the one thing the
-  graph itself cannot show you: once the old node is gone, its loose ends are invisible.
-
-**Renaming a key rewrites the graph.** Right-click a key on the bindings component and choose
-*Rename key and graph references*: it renames the binding and every node in the graph — and in its
-subgraphs — that referenced the old name, in one pass. Renaming the binding alone is what produces
-the *"used in the graph but missing from bindings"* errors, so the two halves are deliberately not
-separable.
-
-Two things it tells you before you commit to it:
-
-- If the key shares a naming prefix with others, changing that prefix renames the whole family
-  with it. The window says how many keys that is, because renaming half a family is worse than
-  renaming none of it.
-- Other graphs that use the same key — a badge graph paired with a popup, typically — are **not**
-  updated. Nothing can see those from here, so they are yours to check.
-
-The bindings inspector reaches in here too. *Show the nodes using this key* opens the graph and
-types the key into the canvas's own search in **Values** mode, so the search box's next and
-previous buttons walk the matches — better than selecting them all at once, which could only ever
-show the ones that happened to share a tab.
+- **Rename key and graph references** — renames the binding and every node that referenced it, in
+  one pass, subgraphs included. It warns first when the key's prefix is shared with a family of
+  keys, since it renames those too, and it cannot see other graphs using the same key — a paired
+  badge graph is yours to check.
+- **Show the nodes using this key** — types it into the canvas's own search, so its next and
+  previous buttons walk the matches.
 
 ### Quietly, without being asked
 
 - The tools keep themselves out of the host project's git — see *It hides itself* above.
-- Each tool registers its own settings file so those stay out of git too, and the Git Local
-  Exclude Manager offers to add any it finds unregistered rather than waiting to be asked.
-- EasyUpload reads the bucket list from the credentials you give it, so picking a destination is
-  a list to choose from rather than a name to remember, and its *From build* button takes the
-  folder straight from the MTX bundle build's output path.
+- Each tool registers its own settings file so those stay out of git too.
 - The Folder Structure Generator hands folders to the QuickNavigation tool if the project has one,
   through reflection, so it costs nothing in projects that do not.
 
-## Working on it
+## Working on the repo
 
-It is a submodule, so changes are committed and pushed here, then picked up elsewhere with
-`git submodule update --remote`.
+Commit and push here as you would in any repository — it is a clone of its own, so nothing in the
+host project needs staging. Everyone else picks the changes up on their next pull.
 
-Before adding a tool:
+### Assemblies
+
+Two, split by what they need, so the toolset drops into any project:
+
+| Assembly | Needs | Contents |
+| --- | --- | --- |
+| `Utilities.Editor` | Unity, TextMeshPro | The portable tools |
+| `Utilities.Editor.Templates` | The Domino template assemblies | Anything that touches behaviour graphs or bindings |
+
+The second is constrained to the `DOMINO_TEMPLATES` define, which template projects already
+set for the shared runtime code. A project without it simply does not compile that assembly —
+no missing-reference errors, and nothing to configure.
+
+Nothing here modifies the graph editor or any other project code. The tools that appear inside
+the graph editor attach themselves to it from the outside.
+
+### Before adding a tool
 
 - **[TOOLING.md](TOOLING.md)** — which assembly it belongs in, why a tool must never require a
   change to project code, editing assets safely, and how to compile-check without waiting for Unity.
