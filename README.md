@@ -125,8 +125,23 @@ Two more reach in from a binding key's right-click menu:
 
 ## Working on the repo
 
-Commit and push here as you would in any repository — it is a clone of its own, so nothing in the
-host project needs staging. Everyone else picks the changes up on their next pull.
+Commit here as you would in any repository — it is a clone of its own, so nothing in the host
+project needs staging.
+
+**Branch and open a pull request. Nothing goes straight to `main`.** Everybody has this same
+clone sitting in their project and updates it by pulling `main`, so `main` is not a branch that
+can be broken for an afternoon — whatever lands there is in everyone's editor on their next pull.
+A branch is also what keeps two people out of each other's way: this is a small enough repo that
+two direct pushes on the same day tend to be conflicts in the same file.
+
+```
+git checkout -b <what-you-are-doing>
+git push -u origin <what-you-are-doing>
+```
+
+Then open the PR on GitHub, and merge it once somebody has looked at it. Delete the branch after;
+the tools are pulled by everyone, so a list of stale branches is a list of things people wonder
+whether they should be on.
 
 ### Assemblies
 
